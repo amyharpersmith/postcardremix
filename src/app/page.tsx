@@ -31,9 +31,8 @@ export default function Home() {
           <div className="hidden shrink-0 md:block">
             <div className="relative h-20 w-40">
               <Image
-                className="dark:invert"
-                src="/next.svg"
-                alt="Next.js logo"
+                src="/pr_casette-tape.svg"
+                alt="Cassette tape"
                 fill
                 sizes="160px"
                 priority
