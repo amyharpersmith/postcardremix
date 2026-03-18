@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "E-card",
-  description: "Create and share a music + GIF e-card.",
+  title: "Postcard Remix",
+  description: "Create and share a music + GIF postcard.",
 };
 
 export default function RootLayout({
@@ -31,7 +31,7 @@ export default function RootLayout({
           <header className="border-b border-black/10 dark:border-white/15">
             <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
               <a href="/" className="font-semibold tracking-tight">
-                E-card
+                Postcard Remix
               </a>
               <nav className="flex items-center gap-3 text-sm">
                 <a
