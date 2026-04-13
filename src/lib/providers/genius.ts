@@ -15,7 +15,7 @@ export type GeniusTrackResult = {
 };
 
 export async function searchGeniusTracks(q: string, limit = 10): Promise<GeniusTrackResult[]> {
-  const accessToken = requireEnv("GENIUS_CLIENT_ID");
+  const accessToken = requireEnv("GENIUS_ACCESS_TOKEN");
 
   const url = new URL("https://api.genius.com/search");
   url.searchParams.set("q", q);
