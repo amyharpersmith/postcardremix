@@ -57,7 +57,7 @@ export async function searchGeniusTracks(q: string, limit = 10): Promise<GeniusT
       title,
       subtitle: artist,
       url,
-      embedUrl: url,
+      embedUrl: `${url}?utm_source=postcardremix`,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
     });
   }
