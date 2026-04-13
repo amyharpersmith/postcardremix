@@ -25,12 +25,18 @@ export async function searchGeniusTracks(q: string, limit = 10): Promise<GeniusT
     headers: { authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
+  
+  const text = await res.text();
+  console.log("[Genius API]", res.status, text.substring(0, 200));
+  
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
     throw new Error(`Genius search failed (${res.status}): ${text || res.statusText}`);
   }
-  const json = (await res.json()) as any;
+  
+  const json = JSON.parse(text) as any;
   const hits: any[] = json?.response?.hits ?? [];
+
+  console.log("[Genius] Found", hits.length, "hits for query:", q);
 
   const results: GeniusTrackResult[] = [];
   for (const hit of hits) {
@@ -55,6 +61,8 @@ export async function searchGeniusTracks(q: string, limit = 10): Promise<GeniusT
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
     });
   }
+  
+  console.log("[Genius] Returning", results.length, "results");
   return results;
 }
 
