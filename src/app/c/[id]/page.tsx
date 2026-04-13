@@ -9,7 +9,7 @@ type Card = {
   message: string;
   media: { type: "gif" | "image"; url: string; alt?: string };
   song: {
-    provider: "spotify" | "youtube";
+    provider: "genius" | "youtube";
     title: string;
     subtitle: string;
     url: string;
@@ -58,7 +58,7 @@ export default async function CardPage({
       </div>
 
       <div className="text-xs text-black/50 dark:text-white/50">
-        {card.song.provider === "spotify" ? "Spotify" : "YouTube"} •{" "}
+        {card.song.provider === "genius" ? "Genius" : "YouTube"} •{" "}
         <a href={card.song.url} className="underline" target="_blank" rel="noreferrer">
           Open source
         </a>

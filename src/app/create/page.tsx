@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-type SongProvider = "spotify" | "youtube";
+type SongProvider = "genius" | "youtube";
 type MediaType = "gif" | "image";
 
 type SongResult = {
@@ -29,7 +29,7 @@ type CreateCardRequest = {
 };
 
 export default function CreatePage() {
-  const [songProvider, setSongProvider] = useState<SongProvider>("spotify");
+  const [songProvider, setSongProvider] = useState<SongProvider>("genius");
   const [songQuery, setSongQuery] = useState("");
   const [songResults, setSongResults] = useState<SongResult[]>([]);
   const [songLoading, setSongLoading] = useState(false);
@@ -149,7 +149,7 @@ export default function CreatePage() {
         <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
           <h2 className="text-lg font-semibold">Pick a song</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            {(["spotify", "youtube"] as const).map((p) => (
+            {(["genius", "youtube"] as const).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -165,7 +165,7 @@ export default function CreatePage() {
                     : "border border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10",
                 ].join(" ")}
               >
-                {p === "spotify" ? "Spotify" : "YouTube"}
+                {p === "genius" ? "Genius" : "YouTube"}
               </button>
             ))}
           </div>

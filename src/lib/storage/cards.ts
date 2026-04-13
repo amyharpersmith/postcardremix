@@ -2,7 +2,7 @@ import { kv } from "@vercel/kv";
 import { newCardId } from "@/lib/ids";
 
 export type CardSong = {
-  provider: "spotify" | "youtube";
+  provider: "genius" | "youtube";
   title: string;
   subtitle: string;
   url: string;

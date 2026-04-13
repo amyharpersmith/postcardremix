@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   if (message.length > 280) return NextResponse.json({ error: "Message too long" }, { status: 400 });
 
   try {
-    const provider = song.provider === "spotify" || song.provider === "youtube" ? song.provider : null;
+    const provider = song.provider === "genius" || song.provider === "youtube" ? song.provider : null;
     if (!provider) return NextResponse.json({ error: "Invalid song provider" }, { status: 400 });
 
     const mediaType = media.type === "gif" || media.type === "image" ? media.type : null;
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     if (!songUrl || !embedUrl) return NextResponse.json({ error: "Invalid song URLs" }, { status: 400 });
 
     const okEmbed =
-      (provider === "spotify" && embedUrl.startsWith("https://open.spotify.com/embed/")) ||
+      (provider === "genius" && embedUrl.startsWith("https://genius.com/")) ||
       (provider === "youtube" && embedUrl.startsWith("https://www.youtube.com/embed/"));
     if (!okEmbed) return NextResponse.json({ error: "Invalid embed URL" }, { status: 400 });
 
