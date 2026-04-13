@@ -324,13 +324,30 @@ export default function CreatePage() {
           <div className="mt-4 grid gap-4">
             <div className="aspect-video overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
               {selectedSong ? (
-                <iframe
-                  src={selectedSong.embedUrl}
-                  className="h-full w-full"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  title="Song preview"
-                />
+                selectedSong.provider === "youtube" ? (
+                  <iframe
+                    src={selectedSong.embedUrl}
+                    className="h-full w-full"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title="Song preview"
+                  />
+                ) : (
+                  <a
+                    href={selectedSong.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-black/5 to-black/10 p-4 text-center hover:from-black/10 hover:to-black/15 dark:from-white/5 dark:to-white/10 dark:hover:from-white/10 dark:hover:to-white/15"
+                  >
+                    <div>
+                      <div className="text-xs font-medium text-black/60 dark:text-white/60">
+                        {selectedSong.provider === "genius" ? "Genius" : "Song"}
+                      </div>
+                      <div className="mt-2 line-clamp-2 text-sm font-semibold">{selectedSong.title}</div>
+                      <div className="mt-1 line-clamp-1 text-xs text-black/50 dark:text-white/50">{selectedSong.subtitle}</div>
+                    </div>
+                  </a>
+                )
               ) : (
                 <div className="grid h-full place-items-center text-sm text-black/60 dark:text-white/60">
                   Select a song to preview.
