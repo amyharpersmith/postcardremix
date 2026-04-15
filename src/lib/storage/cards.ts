@@ -2,11 +2,19 @@ import { kv } from "@vercel/kv";
 import { newCardId } from "@/lib/ids";
 
 export type CardSong = {
-  provider: "genius" | "youtube";
+  provider: "youtube";
   title: string;
   subtitle: string;
   url: string;
   embedUrl: string;
+  thumbnailUrl?: string;
+};
+
+export type PlaylistSong = {
+  id: string;
+  title: string;
+  subtitle: string;
+  videoId: string;
   thumbnailUrl?: string;
 };
 
@@ -24,6 +32,7 @@ export type Card = {
   message: string;
   song: CardSong;
   media: CardMedia;
+  playlistSongs?: PlaylistSong[];
 };
 
 const KEY_PREFIX = "card:";

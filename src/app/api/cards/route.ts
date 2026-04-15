@@ -22,6 +22,7 @@ export async function POST(req: Request) {
   const message = String(body.message ?? "").trim();
   const song = body.song ?? null;
   const media = body.media ?? null;
+  const playlistSongs = body.playlistSongs ?? null;
 
   if (!toName || !message || !song || !media) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   if (message.length > 280) return NextResponse.json({ error: "Message too long" }, { status: 400 });
 
   try {
-    const provider = song.provider === "genius" || song.provider === "youtube" ? song.provider : null;
+    const provider = song.provider === "youtube" ? song.provider : null;
     if (!provider) return NextResponse.json({ error: "Invalid song provider" }, { status: 400 });
 
     const mediaType = media.type === "gif" || media.type === "image" ? media.type : null;
@@ -39,12 +40,16 @@ export async function POST(req: Request) {
 
     const songUrl = String(song.url ?? "");
     const embedUrl = String(song.embedUrl ?? "");
-    if (!songUrl || !embedUrl) return NextResponse.json({ error: "Invalid song URLs" }, { status: 400 });
+    if (!embedUrl) return NextResponse.json({ error: "Invalid embed URL" }, { status: 400 });
 
-    const okEmbed =
-      (provider === "genius" && embedUrl.startsWith("https://genius.com/")) ||
-      (provider === "youtube" && embedUrl.startsWith("https://www.youtube.com/embed/"));
-    if (!okEmbed) return NextResponse.json({ error: "Invalid embed URL" }, { status: 400 });
+    // Validate embedUrl: either YouTube playlist, YouTube video, or custom playlist
+    const isYouTubePlaylist = embedUrl.startsWith("https://www.youtube.com/embed/videoseries?list=");
+    const isYouTubeVideo = embedUrl.startsWith("https://www.youtube.com/embed/");
+    const isCustomPlaylist = embedUrl.startsWith("custom://playlist/");
+
+    if (!isYouTubePlaylist && !isYouTubeVideo && !isCustomPlaylist) {
+      return NextResponse.json({ error: "Invalid embed URL format" }, { status: 400 });
+    }
 
     const mediaUrl = String(media.url ?? "");
     if (!mediaUrl.startsWith("https://")) {
@@ -67,6 +72,7 @@ export async function POST(req: Request) {
         url: mediaUrl,
         alt: media.alt ? String(media.alt) : undefined,
       },
+      playlistSongs: playlistSongs && Array.isArray(playlistSongs) ? playlistSongs : undefined,
     });
 
     const shareUrl = new URL(`/c/${encodeURIComponent(card.id)}`, getBaseUrl(req)).toString();

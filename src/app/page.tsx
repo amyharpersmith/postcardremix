@@ -10,7 +10,7 @@ export default function Home() {
               Make a music e-card with a GIF.
             </h1>
             <p className="mt-3 text-pretty text-base text-black/70 dark:text-white/70">
-              Search for a Genius track or YouTube video, pair it with a GIPHY
+              Search for a YouTube song or share a YouTube Music playlist, pair it with a GIPHY
               GIF (or your own photo), add a short note, and share a short link.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -45,8 +45,8 @@ export default function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         {[
           {
-            title: "1) Pick a song",
-            desc: "Search Genius or YouTube and select a result.",
+            title: "1) Pick a song or playlist",
+            desc: "Search for a YouTube song or paste a playlist link.",
           },
           {
             title: "2) Add a GIF or photo",

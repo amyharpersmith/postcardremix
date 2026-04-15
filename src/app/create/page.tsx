@@ -2,16 +2,30 @@
 
 import { useMemo, useState } from "react";
 
-type SongProvider = "genius" | "youtube";
 type MediaType = "gif" | "image";
+type ContentMode = "song" | "playlist";
 
 type SongResult = {
-  provider: SongProvider;
   id: string;
   title: string;
   subtitle: string;
   url: string;
   embedUrl: string;
+  thumbnailUrl?: string;
+};
+
+type PlaylistInfo = {
+  title: string;
+  playlistId: string;
+  embedUrl: string;
+  url: string;
+};
+
+type PlaylistSong = {
+  id: string;
+  title: string;
+  subtitle: string;
+  videoId: string;
   thumbnailUrl?: string;
 };
 
@@ -24,16 +38,43 @@ type Media = {
 type CreateCardRequest = {
   toName: string;
   message: string;
-  song: Omit<SongResult, "id"> & { provider: SongProvider };
+  song: {
+    provider: "youtube";
+    title: string;
+    subtitle: string;
+    url: string;
+    embedUrl: string;
+    thumbnailUrl?: string;
+  };
   media: Media;
+  playlistSongs?: PlaylistSong[];
 };
 
+function extractPlaylistId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.searchParams.get("list");
+  } catch {
+    return null;
+  }
+}
+
 export default function CreatePage() {
-  const [songProvider, setSongProvider] = useState<SongProvider>("genius");
+  const [mode, setMode] = useState<ContentMode>("song");
+
+  // Song search
   const [songQuery, setSongQuery] = useState("");
   const [songResults, setSongResults] = useState<SongResult[]>([]);
   const [songLoading, setSongLoading] = useState(false);
   const [selectedSong, setSelectedSong] = useState<SongResult | null>(null);
+
+  // Playlist (for YouTube linked playlists - kept for backward compat)
+  const [playlistUrl, setPlaylistUrl] = useState("");
+  const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
+  const [playlistError, setPlaylistError] = useState<string | null>(null);
+
+  // Custom playlist
+  const [playlistSongs, setPlaylistSongs] = useState<PlaylistSong[]>([]);
 
   const [gifQuery, setGifQuery] = useState("");
   const [gifResults, setGifResults] = useState<Array<{ url: string; preview: string; alt: string }>>([]);
@@ -49,8 +90,9 @@ export default function CreatePage() {
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = useMemo(() => {
-    return Boolean(selectedSong && media && toName.trim() && message.trim());
-  }, [selectedSong, media, toName, message]);
+    const hasContent = mode === "song" ? selectedSong : (playlistSongs.length > 0 || playlistInfo);
+    return Boolean(hasContent && media && toName.trim() && message.trim());
+  }, [mode, selectedSong, playlistSongs, playlistInfo, media, toName, message]);
 
   async function searchSongs() {
     setError(null);
@@ -62,15 +104,41 @@ export default function CreatePage() {
         setSongResults([]);
         return;
       }
-      const res = await fetch(`/api/search/${songProvider}?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/search/youtube?q=${encodeURIComponent(q)}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Song search failed");
+      if (!res.ok) throw new Error(json?.error ?? "Search failed");
       setSongResults(json.results as SongResult[]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Song search failed");
+      setError(e instanceof Error ? e.message : "Search failed");
     } finally {
       setSongLoading(false);
     }
+  }
+
+  function handlePlaylistUrlChange(url: string) {
+    setPlaylistUrl(url);
+    setPlaylistError(null);
+    
+    const url_trimmed = url.trim();
+    if (!url_trimmed) {
+      setPlaylistInfo(null);
+      return;
+    }
+
+    const playlistId = extractPlaylistId(url_trimmed);
+    if (!playlistId) {
+      setPlaylistError("Invalid YouTube playlist URL. Use: https://www.youtube.com/playlist?list=...");
+      setPlaylistInfo(null);
+      return;
+    }
+
+    const playlistName = "Playlist";
+    setPlaylistInfo({
+      title: playlistName,
+      playlistId,
+      url: url_trimmed,
+      embedUrl: `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(playlistId)}`,
+    });
   }
 
   async function searchGifs() {
@@ -110,7 +178,28 @@ export default function CreatePage() {
   }
 
   async function createCard() {
-    if (!selectedSong || !media) return;
+    let content: { title: string; subtitle: string; url: string; embedUrl: string; thumbnailUrl?: string } | null = null;
+    
+    if (mode === "song" && selectedSong) {
+      content = selectedSong;
+    } else if (mode === "playlist" && playlistSongs.length > 0) {
+      content = {
+        title: `Playlist (${playlistSongs.length} songs)`,
+        subtitle: playlistSongs[0].title,
+        url: "",
+        embedUrl: `custom://playlist/${playlistSongs.map((s) => s.videoId).join(",")}`,
+      };
+    } else if (mode === "playlist" && playlistInfo) {
+      content = {
+        title: playlistInfo.title,
+        subtitle: "Playlist",
+        url: playlistInfo.url,
+        embedUrl: playlistInfo.embedUrl,
+      };
+    }
+
+    if (!content || !media) return;
+    
     setSubmitting(true);
     setError(null);
     setShareUrl(null);
@@ -119,14 +208,15 @@ export default function CreatePage() {
         toName: toName.trim(),
         message: message.trim(),
         song: {
-          provider: selectedSong.provider,
-          title: selectedSong.title,
-          subtitle: selectedSong.subtitle,
-          url: selectedSong.url,
-          embedUrl: selectedSong.embedUrl,
-          thumbnailUrl: selectedSong.thumbnailUrl,
+          provider: "youtube",
+          title: content.title,
+          subtitle: content.subtitle,
+          url: content.url,
+          embedUrl: content.embedUrl,
+          thumbnailUrl: content.thumbnailUrl,
         },
         media,
+        playlistSongs: playlistSongs.length > 0 ? playlistSongs : undefined,
       };
       const res = await fetch("/api/cards", {
         method: "POST",
@@ -144,78 +234,193 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <div className="grid gap-6">
+    <div className="grid gap-8 lg:grid-cols-2 w-full">
+      <div className="grid gap-6 min-w-0">
         <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
-          <h2 className="text-lg font-semibold">Pick a song</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {(["genius", "youtube"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => {
-                  setSongProvider(p);
-                  setSongResults([]);
-                  setSelectedSong(null);
-                }}
-                className={[
-                  "rounded-full px-4 py-2 text-sm font-medium",
-                  p === songProvider
-                    ? "bg-foreground text-background"
-                    : "border border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10",
-                ].join(" ")}
-              >
-                {p === "genius" ? "Genius" : "YouTube"}
-              </button>
-            ))}
-          </div>
-
+          <h2 className="text-lg font-semibold">Pick content</h2>
+          
           <div className="mt-4 flex gap-2">
-            <input
-              value={songQuery}
-              onChange={(e) => setSongQuery(e.target.value)}
-              placeholder="Search by title, artist, or keywords…"
-              className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
-            />
             <button
               type="button"
-              onClick={searchSongs}
-              disabled={songLoading}
-              className="h-11 shrink-0 rounded-xl bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 disabled:opacity-60"
+              onClick={() => {
+                setMode("song");
+                setSongResults([]);
+                setSelectedSong(null);
+                setError(null);
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                mode === "song"
+                  ? "bg-foreground text-background"
+                  : "border border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+              }`}
             >
-              {songLoading ? "Searching…" : "Search"}
+              Song
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("playlist");
+                setPlaylistUrl("");
+                setPlaylistInfo(null);
+                setPlaylistError(null);
+                setError(null);
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                mode === "playlist"
+                  ? "bg-foreground text-background"
+                  : "border border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+              }`}
+            >
+              Playlist
             </button>
           </div>
 
-          <div className="mt-4 grid gap-2">
-            {songResults.map((r) => (
-              <button
-                key={`${r.provider}:${r.id}`}
-                type="button"
-                onClick={() => setSelectedSong(r)}
-                className={[
-                  "flex items-center gap-3 rounded-xl border px-3 py-2 text-left",
-                  selectedSong?.id === r.id && selectedSong.provider === r.provider
-                    ? "border-black/30 bg-black/5 dark:border-white/30 dark:bg-white/10"
-                    : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10",
-                ].join(" ")}
-              >
-                <div className="h-10 w-10 overflow-hidden rounded-lg bg-black/5 dark:bg-white/10">
-                  {r.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-                  ) : null}
+          {mode === "song" ? (
+            <div className="mt-4 grid gap-3">
+              <div className="flex gap-2">
+                <input
+                  value={songQuery}
+                  onChange={(e) => setSongQuery(e.target.value)}
+                  placeholder="Search for a song..."
+                  className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
+                />
+                <button
+                  type="button"
+                  onClick={searchSongs}
+                  disabled={songLoading}
+                  className="h-11 shrink-0 rounded-xl bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 disabled:opacity-60"
+                >
+                  {songLoading ? "Searching…" : "Search"}
+                </button>
+              </div>
+
+              <div className="grid gap-2">
+                {songResults.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setSelectedSong(r)}
+                    className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left ${
+                      selectedSong?.id === r.id
+                        ? "border-black/30 bg-black/5 dark:border-white/30 dark:bg-white/10"
+                        : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="h-10 w-10 overflow-hidden rounded-lg bg-black/5 dark:bg-white/10">
+                      {r.thumbnailUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={r.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{r.title}</div>
+                      <div className="truncate text-xs text-black/70 dark:text-white/70">{r.subtitle}</div>
+                    </div>
+                  </button>
+                ))}
+                {songResults.length === 0 && (
+                  <div className="text-sm text-black/60 dark:text-white/60">Search to see results.</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              <div>
+                <label className="text-sm font-medium text-black/70 dark:text-white/70">
+                  Add songs to your playlist
+                </label>
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={songQuery}
+                      onChange={(e) => setSongQuery(e.target.value)}
+                      placeholder="Search for songs..."
+                      className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={searchSongs}
+                      disabled={songLoading}
+                      className="h-11 shrink-0 rounded-xl bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 disabled:opacity-60"
+                    >
+                      {songLoading ? "Searching…" : "Search"}
+                    </button>
+                  </div>
+
+                  <div className="grid gap-2 max-h-48 overflow-y-auto">
+                    {songResults.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => {
+                          if (!playlistSongs.find((s) => s.id === r.id)) {
+                            setPlaylistSongs([
+                              ...playlistSongs,
+                              {
+                                id: r.id,
+                                title: r.title,
+                                subtitle: r.subtitle,
+                                videoId: r.embedUrl.split("/embed/")[1],
+                                thumbnailUrl: r.thumbnailUrl,
+                              },
+                            ]);
+                          }
+                        }}
+                        className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left ${
+                          playlistSongs.find((s) => s.id === r.id)
+                            ? "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950"
+                            : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        <div className="h-10 w-10 overflow-hidden rounded-lg bg-black/5 dark:bg-white/10">
+                          {r.thumbnailUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold">{r.title}</div>
+                          <div className="truncate text-xs text-black/70 dark:text-white/70">{r.subtitle}</div>
+                        </div>
+                        {playlistSongs.find((s) => s.id === r.id) && (
+                          <div className="shrink-0 text-green-600">✓</div>
+                        )}
+                      </button>
+                    ))}
+                    {songResults.length === 0 && (
+                      <div className="text-sm text-black/60 dark:text-white/60">Search to see results.</div>
+                    )}
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{r.title}</div>
-                  <div className="truncate text-xs text-black/70 dark:text-white/70">{r.subtitle}</div>
+              </div>
+
+              {playlistSongs.length > 0 && (
+                <div className="mt-2 rounded-xl border border-black/10 bg-black/2 p-3 dark:border-white/15 dark:bg-white/5">
+                  <div className="text-xs font-semibold text-black/70 dark:text-white/70">
+                    Playlist ({playlistSongs.length} songs)
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {playlistSongs.map((song, idx) => (
+                      <div key={song.id} className="flex items-center gap-2 rounded-lg bg-black/5 p-2 dark:bg-white/10">
+                        <div className="text-xs font-medium text-black/60 dark:text-white/60 w-5">{idx + 1}.</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-medium">{song.title}</div>
+                          <div className="truncate text-xs text-black/50 dark:text-white/50">{song.subtitle}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPlaylistSongs(playlistSongs.filter((s) => s.id !== song.id))}
+                          className="shrink-0 text-xs px-2 py-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </button>
-            ))}
-            {songResults.length === 0 ? (
-              <div className="text-sm text-black/60 dark:text-white/60">Search to see results.</div>
-            ) : null}
-          </div>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
@@ -239,7 +444,7 @@ export default function CreatePage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 w-full">
               {gifResults.map((g) => (
                 <button
                   key={g.url}
@@ -318,13 +523,13 @@ export default function CreatePage() {
         </section>
       </div>
 
-      <aside className="lg:sticky lg:top-6">
+      <aside className="lg:sticky lg:top-6 w-full lg:w-auto">
         <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
           <div className="text-sm font-semibold">Live preview</div>
           <div className="mt-4 grid gap-4">
             <div className="aspect-video overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
-              {selectedSong ? (
-                selectedSong.provider === "youtube" ? (
+              {mode === "song" ? (
+                selectedSong ? (
                   <iframe
                     src={selectedSong.embedUrl}
                     className="h-full w-full"
@@ -333,24 +538,36 @@ export default function CreatePage() {
                     title="Song preview"
                   />
                 ) : (
-                  <a
-                    href={selectedSong.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-full w-full items-center justify-center bg-gradient-to-br from-black/5 to-black/10 p-4 text-center hover:from-black/10 hover:to-black/15 dark:from-white/5 dark:to-white/10 dark:hover:from-white/10 dark:hover:to-white/15"
-                  >
-                    <div>
-                      <div className="text-xs font-medium text-black/60 dark:text-white/60">
-                        {selectedSong.provider === "genius" ? "Genius" : "Song"}
-                      </div>
-                      <div className="mt-2 line-clamp-2 text-sm font-semibold">{selectedSong.title}</div>
-                      <div className="mt-1 line-clamp-1 text-xs text-black/50 dark:text-white/50">{selectedSong.subtitle}</div>
-                    </div>
-                  </a>
+                  <div className="grid h-full place-items-center text-sm text-black/60 dark:text-white/60">
+                    Search and select a song to preview.
+                  </div>
                 )
+              ) : playlistSongs.length > 0 ? (
+                <div className="h-full w-full bg-black text-white flex flex-col p-4 overflow-hidden">
+                  <div className="text-sm font-semibold mb-2">Playlist ({playlistSongs.length} songs)</div>
+                  <div className="flex-1 overflow-y-auto text-xs space-y-1">
+                    {playlistSongs.map((song, idx) => (
+                      <div key={song.id} className="flex items-start gap-2 pb-1 border-b border-white/10">
+                        <div className="text-white/60 w-5 shrink-0">{idx + 1}.</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate">{song.title}</div>
+                          <div className="text-white/60 truncate">{song.subtitle}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : playlistInfo ? (
+                <iframe
+                  src={playlistInfo.embedUrl}
+                  className="h-full w-full"
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  title="Playlist preview"
+                />
               ) : (
                 <div className="grid h-full place-items-center text-sm text-black/60 dark:text-white/60">
-                  Select a song to preview.
+                  Search and add songs to create a playlist.
                 </div>
               )}
             </div>
