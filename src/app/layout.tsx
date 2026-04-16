@@ -1,20 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { JetBrains_Mono, Press_Start_2P, VT323, Caveat } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const pressStart = Press_Start_2P({
+  variable: "--font-press-start",
   subsets: ["latin"],
+  weight: "400",
+});
+
+const vt323 = VT323({
+  variable: "--font-vt323",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["500", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Postcard Remix",
-  description: "Create and share a music + GIF postcard.",
+  title: "Postcard Remix — 80s Mixtape",
+  description: "Make a neon music postcard. Pick a song, a GIF, a note. Share a short link.",
 };
 
 export default function RootLayout({
@@ -25,29 +39,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${jetbrainsMono.variable} ${pressStart.variable} ${vt323.variable} ${caveat.variable} antialiased`}
       >
-        <div className="min-h-dvh">
-          <header className="border-b border-black/10 dark:border-white/15">
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-              <a href="/" className="font-semibold tracking-tight">
-                Postcard Remix
-              </a>
-              <nav className="flex items-center gap-3 text-sm">
-                <a
-                  href="/create"
-                  className="rounded-full bg-foreground px-4 py-2 font-medium text-background hover:opacity-90"
-                >
-                  Create
-                </a>
-              </nav>
-            </div>
-          </header>
-          <main className="mx-auto w-full max-w-5xl px-4 py-10">{children}</main>
-          <footer className="mx-auto w-full max-w-5xl px-4 pb-10 text-xs text-black/60 dark:text-white/60">
-            Built for sharing. Cards may expire.
-          </footer>
-        </div>
+        {children}
       </body>
     </html>
   );

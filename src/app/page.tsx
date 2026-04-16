@@ -1,73 +1,63 @@
-import Image from "next/image";
+import Link from "next/link";
+import styles from "./create/create.module.css";
 
 export default function Home() {
   return (
-    <div className="grid gap-8">
-      <section className="rounded-2xl border border-black/10 bg-white p-8 shadow-sm dark:border-white/15 dark:bg-black">
-        <div className="flex items-center justify-between gap-6">
-          <div className="max-w-2xl">
-            <h1 className="text-balance text-4xl font-semibold tracking-tight">
-              Make a music e-card with a GIF.
-            </h1>
-            <p className="mt-3 text-pretty text-base text-black/70 dark:text-white/70">
-              Search for a YouTube song or share a YouTube Music playlist, pair it with a GIPHY
-              GIF (or your own photo), add a short note, and share a short link.
-            </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="/create"
-                className="inline-flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-sm font-medium text-background hover:opacity-90"
-              >
-                Create an e-card
-              </a>
-              <a
-                href="/create"
-                className="inline-flex h-11 items-center justify-center rounded-full border border-black/10 px-5 text-sm font-medium hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-              >
-                Try a quick demo
-              </a>
-            </div>
-          </div>
-          <div className="hidden shrink-0 md:block">
-            <div className="relative h-20 w-40">
-              <Image
-                src="/pr_casette-tape.svg"
-                alt="Cassette tape"
-                fill
-                sizes="160px"
-                priority
-              />
-            </div>
-          </div>
+    <div className={styles.wrap}>
+      <header className={styles.hero}>
+        <div className={styles.logo}>
+          <span className={styles.brandSmall}>Postcard Remix™</span>
+          <span className={styles.version}>v0.52</span>
+          <h1>REMIX</h1>
+        </div>
+      </header>
+
+      <p className={styles.path}>
+        ~/src/postcard-remix <span className={styles.sep}>›</span>{" "}
+        <span className={styles.hl}>home</span>
+      </p>
+
+      <section className={styles.panel} style={{ marginBottom: 20 }}>
+        <div className={styles.panelTitle}>
+          Make a Music Postcard <div className={styles.stripes} />
+        </div>
+        <p style={{ margin: "0 0 16px", fontSize: 14, lineHeight: 1.6, color: "var(--ink)" }}>
+          Search for a YouTube song (or share a playlist URL), pair it with a GIPHY GIF or your own
+          photo, scribble a short note on the back, and share a short link.
+        </p>
+        <div className={styles.shareRow}>
+          <Link href="/create" className={`${styles.btn} ${styles.btnPrimary}`} style={{ textAlign: "center", textDecoration: "none" }}>
+            CREATE AN E-CARD
+          </Link>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: 16,
+        }}
+      >
         {[
-          {
-            title: "1) Pick a song or playlist",
-            desc: "Search for a YouTube song or paste a playlist link.",
-          },
-          {
-            title: "2) Add a GIF or photo",
-            desc: "Search GIPHY or upload an image.",
-          },
-          {
-            title: "3) Share a short link",
-            desc: "We generate a short URL that renders your card.",
-          },
-        ].map((x) => (
-          <div
-            key={x.title}
-            className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black"
-          >
-            <div className="text-sm font-semibold">{x.title}</div>
-            <div className="mt-2 text-sm text-black/70 dark:text-white/70">
-              {x.desc}
+          { n: "1", title: "Pick a Song", desc: "Search YouTube or paste a playlist URL." },
+          { n: "2", title: "Add a GIF or Photo", desc: "Search GIPHY or upload your own image." },
+          { n: "3", title: "Share a Short Link", desc: "We generate a URL that renders your card." },
+        ].map((s) => (
+          <div key={s.n} className={styles.panel}>
+            <div className={styles.panelTitle}>
+              {s.n} · {s.title} <div className={styles.stripes} />
             </div>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>
+              {s.desc}
+            </p>
           </div>
         ))}
       </section>
+
+      <footer className={styles.keys}>
+        <span>Built for sharing. Cards may expire.</span>
+      </footer>
     </div>
   );
 }

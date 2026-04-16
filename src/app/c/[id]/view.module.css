@@ -1,0 +1,167 @@
+.viewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .viewGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.playerPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.playerFrame {
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1.5px solid rgba(255, 79, 216, 0.5);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 79, 216, 0.2),
+    0 0 30px rgba(255, 79, 216, 0.2),
+    0 0 60px rgba(122, 59, 255, 0.3);
+}
+.playerFrame iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+}
+
+.playlistControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(10, 6, 19, 0.6);
+  border: 1px solid rgba(162, 113, 255, 0.35);
+  border-radius: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+.navBtns {
+  display: flex;
+  gap: 6px;
+}
+.navBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(162, 113, 255, 0.45);
+  background: rgba(122, 59, 255, 0.18);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 120ms ease;
+}
+.navBtn:hover:not(:disabled) {
+  background: rgba(255, 79, 216, 0.2);
+  border-color: var(--pink);
+}
+.navBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tracklist {
+  max-height: 220px;
+  overflow-y: auto;
+  background: rgba(10, 6, 19, 0.5);
+  border: 1px solid rgba(162, 113, 255, 0.3);
+  border-radius: 8px;
+}
+.tracklist::-webkit-scrollbar {
+  width: 8px;
+}
+.tracklist::-webkit-scrollbar-thumb {
+  background: rgba(162, 113, 255, 0.35);
+  border-radius: 4px;
+}
+.track {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(162, 113, 255, 0.15);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.track:last-child {
+  border-bottom: 0;
+}
+.track:hover {
+  background: rgba(122, 59, 255, 0.14);
+}
+.trackActive {
+  background: rgba(255, 79, 216, 0.14);
+  color: var(--ink);
+}
+.trackNum {
+  color: var(--ink-dim);
+  width: 22px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+}
+.trackTitle {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trackMark {
+  color: var(--pink);
+  font-size: 12px;
+}
+
+.meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--ink-dim);
+  padding-top: 4px;
+}
+.meta a {
+  color: var(--cyan);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(41, 240, 200, 0.4);
+}
+.meta a:hover {
+  border-bottom-color: var(--cyan);
+}
+
+.loading {
+  padding: 80px 0;
+  text-align: center;
+  font-family: var(--font-vt323), monospace;
+  font-size: 22px;
+  color: var(--ink-dim);
+  letter-spacing: 2px;
+}
+.loading::after {
+  content: "_";
+  color: var(--pink);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import styles from "./create.module.css";
 
 type MediaType = "gif" | "image";
-type ContentMode = "song" | "playlist";
+type ContentMode = "search" | "url";
+type MediaTab = "gif" | "upload";
 
 type SongResult = {
   id: string;
@@ -60,20 +62,17 @@ function extractPlaylistId(url: string): string | null {
 }
 
 export default function CreatePage() {
-  const [mode, setMode] = useState<ContentMode>("song");
+  const [mode, setMode] = useState<ContentMode>("search");
+  const [mediaTab, setMediaTab] = useState<MediaTab>("gif");
 
-  // Song search
   const [songQuery, setSongQuery] = useState("");
   const [songResults, setSongResults] = useState<SongResult[]>([]);
   const [songLoading, setSongLoading] = useState(false);
   const [selectedSong, setSelectedSong] = useState<SongResult | null>(null);
 
-  // Playlist (for YouTube linked playlists - kept for backward compat)
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
   const [playlistError, setPlaylistError] = useState<string | null>(null);
-
-  // Custom playlist
   const [playlistSongs, setPlaylistSongs] = useState<PlaylistSong[]>([]);
 
   const [gifQuery, setGifQuery] = useState("");
@@ -82,17 +81,47 @@ export default function CreatePage() {
 
   const [media, setMedia] = useState<Media | null>(null);
 
-  const [toName, setToName] = useState("");
+  const [toName, setToName] = useState("you");
+  const [caption, setCaption] = useState("side a · spring '86");
   const [message, setMessage] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const captionRef = useRef<HTMLDivElement | null>(null);
+  const recipientRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (captionRef.current && captionRef.current.textContent !== caption) {
+      captionRef.current.textContent = caption;
+    }
+  }, [caption]);
+
+  useEffect(() => {
+    if (recipientRef.current && recipientRef.current.textContent !== toName) {
+      recipientRef.current.textContent = toName;
+    }
+  }, [toName]);
+
   const canSubmit = useMemo(() => {
-    const hasContent = mode === "song" ? selectedSong : (playlistSongs.length > 0 || playlistInfo);
+    const hasContent =
+      mode === "search" ? Boolean(selectedSong) : playlistSongs.length > 0 || Boolean(playlistInfo);
     return Boolean(hasContent && media && toName.trim() && message.trim());
   }, [mode, selectedSong, playlistSongs, playlistInfo, media, toName, message]);
+
+  const nowPlayingText = useMemo(() => {
+    if (mode === "search" && selectedSong) {
+      return `${selectedSong.title} — ${selectedSong.subtitle}`;
+    }
+    if (mode === "url" && playlistSongs.length > 0) {
+      return `Playlist · ${playlistSongs.length} songs`;
+    }
+    if (mode === "url" && playlistInfo) {
+      return playlistInfo.title;
+    }
+    return "— no song selected —";
+  }, [mode, selectedSong, playlistSongs, playlistInfo]);
 
   async function searchSongs() {
     setError(null);
@@ -118,25 +147,24 @@ export default function CreatePage() {
   function handlePlaylistUrlChange(url: string) {
     setPlaylistUrl(url);
     setPlaylistError(null);
-    
-    const url_trimmed = url.trim();
-    if (!url_trimmed) {
+
+    const trimmed = url.trim();
+    if (!trimmed) {
       setPlaylistInfo(null);
       return;
     }
 
-    const playlistId = extractPlaylistId(url_trimmed);
+    const playlistId = extractPlaylistId(trimmed);
     if (!playlistId) {
-      setPlaylistError("Invalid YouTube playlist URL. Use: https://www.youtube.com/playlist?list=...");
+      setPlaylistError("Invalid YouTube playlist URL. Use: https://www.youtube.com/playlist?list=…");
       setPlaylistInfo(null);
       return;
     }
 
-    const playlistName = "Playlist";
     setPlaylistInfo({
-      title: playlistName,
+      title: "Playlist",
       playlistId,
-      url: url_trimmed,
+      url: trimmed,
       embedUrl: `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(playlistId)}`,
     });
   }
@@ -178,19 +206,21 @@ export default function CreatePage() {
   }
 
   async function createCard() {
-    let content: { title: string; subtitle: string; url: string; embedUrl: string; thumbnailUrl?: string } | null = null;
-    
-    if (mode === "song" && selectedSong) {
+    let content: SongResult | null = null;
+
+    if (mode === "search" && selectedSong) {
       content = selectedSong;
-    } else if (mode === "playlist" && playlistSongs.length > 0) {
+    } else if (mode === "url" && playlistSongs.length > 0) {
       content = {
+        id: "playlist",
         title: `Playlist (${playlistSongs.length} songs)`,
         subtitle: playlistSongs[0].title,
         url: "",
         embedUrl: `custom://playlist/${playlistSongs.map((s) => s.videoId).join(",")}`,
       };
-    } else if (mode === "playlist" && playlistInfo) {
+    } else if (mode === "url" && playlistInfo) {
       content = {
+        id: playlistInfo.playlistId,
         title: playlistInfo.title,
         subtitle: "Playlist",
         url: playlistInfo.url,
@@ -199,7 +229,7 @@ export default function CreatePage() {
     }
 
     if (!content || !media) return;
-    
+
     setSubmitting(true);
     setError(null);
     setShareUrl(null);
@@ -233,239 +263,325 @@ export default function CreatePage() {
     }
   }
 
+  function handleModeChange(next: ContentMode) {
+    setMode(next);
+    setSongResults([]);
+    setSelectedSong(null);
+    setError(null);
+    if (next === "search") {
+      setPlaylistUrl("");
+      setPlaylistInfo(null);
+      setPlaylistError(null);
+    }
+  }
+
+  function handleKeyNav(e: React.KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canSubmit) {
+      e.preventDefault();
+      void createCard();
+    }
+  }
+
+  const onEditablePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text").replace(/\n/g, " ");
+    document.execCommand("insertText", false, text);
+  };
+
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem] w-full items-start">
-      <div className="grid gap-6 min-w-0">
-        <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
-          <h2 className="text-lg font-semibold">Pick content</h2>
-          
-          <div className="mt-4 flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("song");
-                setSongResults([]);
-                setSelectedSong(null);
-                setError(null);
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-medium ${
-                mode === "song"
-                  ? "bg-foreground text-background"
-                  : "border border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-              }`}
-            >
-              Song
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("playlist");
-                setPlaylistUrl("");
-                setPlaylistInfo(null);
-                setPlaylistError(null);
-                setError(null);
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-medium ${
-                mode === "playlist"
-                  ? "bg-foreground text-background"
-                  : "border border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-              }`}
-            >
-              Playlist
-            </button>
+    <div className={styles.wrap} onKeyDown={handleKeyNav}>
+      <header className={styles.hero}>
+        <div className={styles.logo}>
+          <span className={styles.brandSmall}>Postcard Remix™</span>
+          <span className={styles.version}>v0.52</span>
+          <h1>REMIX</h1>
+        </div>
+        <div className={styles.topStatus}>
+          <span>
+            <span className={`${styles.dot} ${styles.dotG}`} /> YouTube · ready
+          </span>
+          <span>
+            <span className={`${styles.dot} ${styles.dotY}`} /> GIPHY · ready
+          </span>
+        </div>
+      </header>
+
+      <p className={styles.path}>
+        ~/src/postcard-remix <span className={styles.sep}>›</span>{" "}
+        <span className={styles.hl}>new postcard</span>{" "}
+        <span className={styles.sep}>›</span> Side A
+      </p>
+
+      <section className={styles.grid}>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>
+            Build Your Card <div className={styles.stripes} />
           </div>
 
-          {mode === "song" ? (
-            <div className="mt-4 grid gap-3">
-              <div className="flex gap-2">
-                <input
-                  value={songQuery}
-                  onChange={(e) => setSongQuery(e.target.value)}
-                  placeholder="Search for a song..."
-                  className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
-                />
-                <button
-                  type="button"
-                  onClick={searchSongs}
-                  disabled={songLoading}
-                  className="h-11 shrink-0 rounded-xl bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 disabled:opacity-60"
-                >
-                  {songLoading ? "Searching…" : "Search"}
-                </button>
-              </div>
-
-              <div className="grid gap-2">
-                {songResults.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setSelectedSong(r)}
-                    className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left ${
-                      selectedSong?.id === r.id
-                        ? "border-black/30 bg-black/5 dark:border-white/30 dark:bg-white/10"
-                        : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="h-10 w-10 overflow-hidden rounded-lg bg-black/5 dark:bg-white/10">
-                      {r.thumbnailUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={r.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{r.title}</div>
-                      <div className="truncate text-xs text-black/70 dark:text-white/70">{r.subtitle}</div>
-                    </div>
-                  </button>
-                ))}
-                {songResults.length === 0 && (
-                  <div className="text-sm text-black/60 dark:text-white/60">Search to see results.</div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-3">
-              <div>
-                <label className="text-sm font-medium text-black/70 dark:text-white/70">
-                  Add songs to your playlist
-                </label>
-                <div className="mt-2 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <input
-                      value={songQuery}
-                      onChange={(e) => setSongQuery(e.target.value)}
-                      placeholder="Search for songs..."
-                      className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
-                    />
-                    <button
-                      type="button"
-                      onClick={searchSongs}
-                      disabled={songLoading}
-                      className="h-11 shrink-0 rounded-xl bg-foreground px-4 text-sm font-medium text-background hover:opacity-90 disabled:opacity-60"
-                    >
-                      {songLoading ? "Searching…" : "Search"}
-                    </button>
-                  </div>
-
-                  <div className="grid gap-2 max-h-48 overflow-y-auto">
-                    {songResults.map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => {
-                          if (!playlistSongs.find((s) => s.id === r.id)) {
-                            setPlaylistSongs([
-                              ...playlistSongs,
-                              {
-                                id: r.id,
-                                title: r.title,
-                                subtitle: r.subtitle,
-                                videoId: r.embedUrl.split("/embed/")[1],
-                                thumbnailUrl: r.thumbnailUrl,
-                              },
-                            ]);
-                          }
-                        }}
-                        className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left ${
-                          playlistSongs.find((s) => s.id === r.id)
-                            ? "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950"
-                            : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-                        }`}
-                      >
-                        <div className="h-10 w-10 overflow-hidden rounded-lg bg-black/5 dark:bg-white/10">
-                          {r.thumbnailUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={r.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold">{r.title}</div>
-                          <div className="truncate text-xs text-black/70 dark:text-white/70">{r.subtitle}</div>
-                        </div>
-                        {playlistSongs.find((s) => s.id === r.id) && (
-                          <div className="shrink-0 text-green-600">✓</div>
-                        )}
-                      </button>
-                    ))}
-                    {songResults.length === 0 && (
-                      <div className="text-sm text-black/60 dark:text-white/60">Search to see results.</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {playlistSongs.length > 0 && (
-                <div className="mt-2 rounded-xl border border-black/10 bg-black/2 p-3 dark:border-white/15 dark:bg-white/5">
-                  <div className="text-xs font-semibold text-black/70 dark:text-white/70">
-                    Playlist ({playlistSongs.length} songs)
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {playlistSongs.map((song, idx) => (
-                      <div key={song.id} className="flex items-center gap-2 rounded-lg bg-black/5 p-2 dark:bg-white/10">
-                        <div className="text-xs font-medium text-black/60 dark:text-white/60 w-5">{idx + 1}.</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-xs font-medium">{song.title}</div>
-                          <div className="truncate text-xs text-black/50 dark:text-white/50">{song.subtitle}</div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setPlaylistSongs(playlistSongs.filter((s) => s.id !== song.id))}
-                          className="shrink-0 text-xs px-2 py-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
-          <h2 className="text-lg font-semibold">Add a GIF or photo</h2>
-
-          <div className="mt-4 grid gap-3">
-            <div className="flex gap-2">
-              <input
-                value={gifQuery}
-                onChange={(e) => setGifQuery(e.target.value)}
-                placeholder="Search GIPHY…"
-                className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
-              />
+          <div className={styles.section}>
+            <div className={`${styles.panelTitle} ${styles.panelTitleInner}`}>
+              1 · Pick a Song <div className={styles.stripes} />
               <button
                 type="button"
-                onClick={searchGifs}
-                disabled={gifLoading}
-                className="h-11 shrink-0 rounded-xl border border-black/10 px-4 text-sm font-medium hover:bg-black/5 disabled:opacity-60 dark:border-white/15 dark:hover:bg-white/10"
+                className={`${styles.toggle} ${mode === "search" ? styles.toggleOn : ""}`}
+                onClick={() => handleModeChange("search")}
               >
-                {gifLoading ? "Searching…" : "Search"}
+                <span className={styles.radio} /> Search
+              </button>
+              <button
+                type="button"
+                className={`${styles.toggle} ${mode === "url" ? styles.toggleOn : ""}`}
+                onClick={() => handleModeChange("url")}
+              >
+                <span className={styles.radio} /> Playlist URL
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 w-full">
-              {gifResults.map((g) => (
-                <button
-                  key={g.url}
-                  type="button"
-                  onClick={() => setMedia({ type: "gif", url: g.url, alt: g.alt })}
-                  className={[
-                    "aspect-square overflow-hidden rounded-xl border",
-                    media?.type === "gif" && media.url === g.url
-                      ? "border-black/30 dark:border-white/30"
-                      : "border-black/10 dark:border-white/15",
-                  ].join(" ")}
+            {mode === "search" ? (
+              <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void searchSongs();
+                  }}
+                  className={styles.prompt}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={g.preview} alt={g.alt} className="h-full w-full object-cover" />
-                </button>
-              ))}
+                  <span className={styles.caret}>&gt;</span>
+                  <input
+                    value={songQuery}
+                    onChange={(e) => setSongQuery(e.target.value)}
+                    placeholder="take on me, a-ha"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.searchBtn}
+                    disabled={songLoading}
+                  >
+                    {songLoading ? "…" : "SEARCH"}
+                  </button>
+                  <span className={styles.block} />
+                </form>
+                <div className={styles.results}>
+                  {songResults.length === 0 && (
+                    <div className={styles.emptyHint}>Search to find songs.</div>
+                  )}
+                  {songResults.map((r) => {
+                    const selected = selectedSong?.id === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        className={`${styles.res} ${selected ? styles.resSelected : ""}`}
+                        onClick={() => setSelectedSong(r)}
+                      >
+                        <div className={styles.thumb}>
+                          {r.thumbnailUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.thumbnailUrl} alt="" />
+                          )}
+                        </div>
+                        <div className={styles.resText}>
+                          <div className={styles.resTitle}>{r.title}</div>
+                          <div className={styles.resMeta}>{r.subtitle}</div>
+                        </div>
+                        <span className={styles.pick}>{selected ? "✓ PICKED" : "+ PICK"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void searchSongs();
+                  }}
+                  className={styles.prompt}
+                >
+                  <span className={styles.caret}>&gt;</span>
+                  <input
+                    value={songQuery}
+                    onChange={(e) => setSongQuery(e.target.value)}
+                    placeholder="search songs to add…"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.searchBtn}
+                    disabled={songLoading}
+                  >
+                    {songLoading ? "…" : "SEARCH"}
+                  </button>
+                  <span className={styles.block} />
+                </form>
+
+                <div className={styles.results}>
+                  {songResults.length === 0 && (
+                    <div className={styles.emptyHint}>
+                      Search and add songs, or paste a playlist URL below.
+                    </div>
+                  )}
+                  {songResults.map((r) => {
+                    const added = playlistSongs.some((s) => s.id === r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        className={`${styles.res} ${added ? styles.resSelected : ""}`}
+                        onClick={() => {
+                          if (added) return;
+                          setPlaylistSongs([
+                            ...playlistSongs,
+                            {
+                              id: r.id,
+                              title: r.title,
+                              subtitle: r.subtitle,
+                              videoId: r.embedUrl.split("/embed/")[1] ?? r.id,
+                              thumbnailUrl: r.thumbnailUrl,
+                            },
+                          ]);
+                        }}
+                      >
+                        <div className={styles.thumb}>
+                          {r.thumbnailUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.thumbnailUrl} alt="" />
+                          )}
+                        </div>
+                        <div className={styles.resText}>
+                          <div className={styles.resTitle}>{r.title}</div>
+                          <div className={styles.resMeta}>{r.subtitle}</div>
+                        </div>
+                        <span className={styles.pick}>{added ? "✓ ADDED" : "+ ADD"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {playlistSongs.length > 0 && (
+                  <div className={styles.playlistBox}>
+                    <div className={styles.plTitle}>
+                      PLAYLIST · {playlistSongs.length} SONGS
+                    </div>
+                    <div className={styles.playlistList}>
+                      {playlistSongs.map((song, i) => (
+                        <div key={song.id} className={styles.plItem}>
+                          <span className={styles.num}>{i + 1}.</span>
+                          <span className={styles.plSongTitle}>{song.title}</span>
+                          <button
+                            type="button"
+                            className={styles.remove}
+                            onClick={() =>
+                              setPlaylistSongs(playlistSongs.filter((s) => s.id !== song.id))
+                            }
+                          >
+                            REMOVE
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className={styles.playlistUrlInput}>
+                  <div className={styles.prompt}>
+                    <span className={styles.caret}>&gt;</span>
+                    <input
+                      value={playlistUrl}
+                      onChange={(e) => handlePlaylistUrlChange(e.target.value)}
+                      placeholder="or paste a youtube playlist URL…"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </div>
+                  {playlistError && (
+                    <div className={styles.playlistUrlError}>{playlistError}</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className={styles.section}>
+            <div className={`${styles.panelTitle} ${styles.panelTitleInner}`}>
+              2 · Add a GIF or Photo <div className={styles.stripes} />
+            </div>
+            <div className={styles.tabs}>
+              <button
+                type="button"
+                className={`${styles.tab} ${mediaTab === "gif" ? styles.tabActive : ""}`}
+                onClick={() => setMediaTab("gif")}
+              >
+                GIPHY Search
+              </button>
+              <button
+                type="button"
+                className={`${styles.tab} ${mediaTab === "upload" ? styles.tabActive : ""}`}
+                onClick={() => setMediaTab("upload")}
+              >
+                Upload Photo
+              </button>
             </div>
 
-            <div className="rounded-xl border border-dashed border-black/15 p-4 text-sm dark:border-white/20">
-              <div className="font-medium">Or upload a photo</div>
-              <div className="mt-2 flex items-center gap-3">
+            {mediaTab === "gif" ? (
+              <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void searchGifs();
+                  }}
+                  className={styles.prompt}
+                >
+                  <span className={styles.caret}>&gt;</span>
+                  <input
+                    value={gifQuery}
+                    onChange={(e) => setGifQuery(e.target.value)}
+                    placeholder="neon, sunset, cat"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.searchBtn}
+                    disabled={gifLoading}
+                  >
+                    {gifLoading ? "…" : "SEARCH"}
+                  </button>
+                  <span className={styles.block} />
+                </form>
+                <div className={styles.gifGrid}>
+                  {gifResults.length === 0 && (
+                    <div className={styles.emptyHint} style={{ gridColumn: "1 / -1" }}>
+                      Search GIPHY to find a GIF.
+                    </div>
+                  )}
+                  {gifResults.map((g) => {
+                    const selected = media?.type === "gif" && media.url === g.url;
+                    return (
+                      <button
+                        key={g.url}
+                        type="button"
+                        className={`${styles.gifCell} ${selected ? styles.gifCellSelected : ""}`}
+                        onClick={() => setMedia({ type: "gif", url: g.url, alt: g.alt })}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={g.preview} alt={g.alt} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <label className={styles.upload}>
+                <div className={styles.uploadIcon}>📸</div>
+                <div>
+                  <strong>Click to upload</strong> or drop an image here
+                </div>
+                <div className={styles.uploadHint}>PNG · JPG · GIF · up to 5MB</div>
                 <input
                   type="file"
                   accept="image/*"
@@ -474,126 +590,155 @@ export default function CreatePage() {
                     if (file) void onUpload(file);
                   }}
                 />
+              </label>
+            )}
+          </div>
+
+          <div className={styles.section}>
+            <div className={`${styles.panelTitle} ${styles.panelTitleInner}`}>
+              3 · Write a Note <div className={styles.stripes} />
+            </div>
+            <div className={styles.messageWrap}>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                maxLength={240}
+                placeholder="miss you. play loud. side A for the drive home…"
+              />
+              <div className={styles.messageMeta}>
+                <span>
+                  Signed with <strong className={styles.by}>♥</strong>
+                </span>
+                <span>{message.length} / 240</span>
               </div>
             </div>
           </div>
-        </section>
 
-        <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
-          <h2 className="text-lg font-semibold">Write your note</h2>
-          <div className="mt-4 grid gap-3">
-            <input
-              value={toName}
-              onChange={(e) => setToName(e.target.value)}
-              placeholder="Recipient name (e.g., Sam)"
-              className="h-11 w-full rounded-xl border border-black/10 bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
-            />
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Short message…"
-              rows={4}
-              className="w-full resize-none rounded-xl border border-black/10 bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/20 dark:border-white/15 dark:focus:ring-white/20"
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void createCard()}
-              disabled={!canSubmit || submitting}
-              className="h-11 rounded-xl bg-foreground px-5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-60"
-            >
-              {submitting ? "Creating…" : "Generate share link"}
-            </button>
-            {shareUrl ? (
-              <div className="flex min-w-0 items-center gap-2 rounded-xl border border-black/10 px-3 py-2 text-sm dark:border-white/15">
-                <span className="truncate">{shareUrl}</span>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(shareUrl)}
-                  className="shrink-0 rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-                >
-                  Copy
-                </button>
-              </div>
-            ) : null}
-            {error ? <div className="text-sm text-red-600">{error}</div> : null}
-          </div>
-        </section>
-      </div>
-
-      <aside className="w-full min-w-0">
-        <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
-          <div className="text-sm font-semibold">Live preview</div>
-          <div className="mt-4 grid gap-4">
-            <div className="aspect-video overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
-              {mode === "song" ? (
-                selectedSong ? (
-                  <iframe
-                    src={selectedSong.embedUrl}
-                    className="h-full w-full"
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    title="Song preview"
-                  />
-                ) : (
-                  <div className="grid h-full place-items-center text-sm text-black/60 dark:text-white/60">
-                    Search and select a song to preview.
-                  </div>
-                )
-              ) : playlistSongs.length > 0 ? (
-                <div className="h-full w-full bg-black text-white flex flex-col p-4 overflow-hidden">
-                  <div className="text-sm font-semibold mb-2">Playlist ({playlistSongs.length} songs)</div>
-                  <div className="flex-1 overflow-y-auto text-xs space-y-1">
-                    {playlistSongs.map((song, idx) => (
-                      <div key={song.id} className="flex items-start gap-2 pb-1 border-b border-white/10">
-                        <div className="text-white/60 w-5 shrink-0">{idx + 1}.</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate">{song.title}</div>
-                          <div className="text-white/60 truncate">{song.subtitle}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : playlistInfo ? (
-                <iframe
-                  src={playlistInfo.embedUrl}
-                  className="h-full w-full"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  title="Playlist preview"
-                />
-              ) : (
-                <div className="grid h-full place-items-center text-sm text-black/60 dark:text-white/60">
-                  Search and add songs to create a playlist.
-                </div>
-              )}
-            </div>
-            <div className="aspect-square overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
-              {media ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={media.url} alt={media.alt ?? ""} className="h-full w-full object-cover" />
-              ) : (
-                <div className="grid h-full place-items-center text-sm text-black/60 dark:text-white/60">
-                  Choose a GIF or upload an image.
-                </div>
-              )}
-            </div>
-            <div className="rounded-xl border border-black/10 p-4 dark:border-white/15">
-              <div className="text-sm">
-                <span className="font-semibold">To:</span>{" "}
-                {toName.trim() ? toName.trim() : "—"}
-              </div>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-black/75 dark:text-white/75">
-                {message.trim() ? message.trim() : "Your message will appear here."}
-              </div>
-            </div>
+          <div className={styles.note}>
+            <span className={styles.tag}>TIP</span>
+            <p>
+              Press <span>⌘/Ctrl + Enter</span> to share it. We&apos;ll generate a short URL that
+              renders your card.
+            </p>
           </div>
         </div>
-      </aside>
+
+        <div className={styles.previewPanel}>
+          <div className={styles.postcard}>
+            <div className={styles.polaroid}>
+              <div className={styles.photo}>
+                {media ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={media.url} alt={media.alt ?? ""} />
+                ) : (
+                  <div className={styles.placeholder}>
+                    pick a gif or upload a photo
+                    <br />
+                    to fill this frame
+                  </div>
+                )}
+              </div>
+              <div
+                ref={captionRef}
+                className={styles.caption}
+                contentEditable
+                suppressContentEditableWarning
+                spellCheck={false}
+                data-placeholder="tap to write a caption…"
+                data-tooltip="✎ click to edit caption"
+                title="Click to edit caption"
+                onInput={(e) => setCaption((e.target as HTMLDivElement).textContent ?? "")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    (e.target as HTMLDivElement).blur();
+                  }
+                }}
+                onPaste={onEditablePaste}
+              />
+            </div>
+
+            <div className={styles.miniCassette}>
+              <div className={styles.rainbow} />
+              <div className={styles.reels}>
+                <div className={styles.reel} />
+                <div className={`${styles.reel} ${styles.reelSlow}`} />
+              </div>
+              <div className={styles.labelStrip}>
+                <span className={styles.song}>{nowPlayingText}</span>
+                <span>SIDE A</span>
+              </div>
+            </div>
+
+            <div className={styles.pcMessage}>{message}</div>
+
+            <div className={styles.pcFooter}>
+              <span>
+                To:{" "}
+                <strong
+                  ref={recipientRef}
+                  className={styles.recipient}
+                  contentEditable
+                  suppressContentEditableWarning
+                  spellCheck={false}
+                  data-placeholder="someone…"
+                  data-tooltip="✎ click to edit"
+                  title="Click to edit recipient"
+                  onInput={(e) => setToName((e.target as HTMLSpanElement).textContent ?? "")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLSpanElement).blur();
+                    }
+                  }}
+                  onPaste={onEditablePaste}
+                />
+              </span>
+              <span className={styles.stamp}>♥ REMIX &apos;86</span>
+            </div>
+          </div>
+
+          <div className={styles.shareRow}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={() => void createCard()}
+              disabled={!canSubmit || submitting}
+            >
+              {submitting ? "CREATING…" : "SHARE · GET SHORT LINK"}
+            </button>
+          </div>
+
+          {shareUrl && (
+            <div className={styles.shareLink}>
+              <span>{shareUrl}</span>
+              <button type="button" onClick={() => navigator.clipboard.writeText(shareUrl)}>
+                COPY
+              </button>
+            </div>
+          )}
+
+          {error && <div className={styles.errorMsg}>{error}</div>}
+        </div>
+      </section>
+
+      <footer className={styles.keys}>
+        <span>
+          <kbd>↑↓</kbd> choose
+        </span>
+        <span>
+          <kbd>tab</kbd> switch media
+        </span>
+        <span>
+          <kbd>enter</kbd> add to card
+        </span>
+        <span>
+          <kbd>ctrl</kbd>+<kbd>enter</kbd> share
+        </span>
+        <span>
+          <kbd>esc</kbd> exit
+        </span>
+      </footer>
     </div>
   );
 }
-
