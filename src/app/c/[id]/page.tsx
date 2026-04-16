@@ -1,7 +1,6 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { getCard } from "@/lib/storage/cards";
 import { useEffect, useState } from "react";
 import create from "../../create/create.module.css";
 import view from "./view.module.css";
@@ -39,16 +38,30 @@ export default function CardPage({
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  const [notFoundState, setNotFoundState] = useState(false);
+
   useEffect(() => {
     params.then(async ({ id }) => {
-      const fetchedCard = (await getCard(id)) as unknown as Card | null;
-      if (!fetchedCard) {
-        notFound();
+      try {
+        const res = await fetch(`/api/cards/${id}`);
+        if (res.status === 404) {
+          setNotFoundState(true);
+          setLoading(false);
+          return;
+        }
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        const fetchedCard = (await res.json()) as Card;
+        setCard(fetchedCard);
+      } catch (err) {
+        console.error(err);
+        setNotFoundState(true);
+      } finally {
+        setLoading(false);
       }
-      setCard(fetchedCard);
-      setLoading(false);
     });
   }, [params]);
+
+  if (notFoundState) notFound();
 
   if (loading) {
     return (
