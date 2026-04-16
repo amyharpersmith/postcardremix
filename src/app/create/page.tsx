@@ -234,7 +234,7 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] w-full items-start">
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem] w-full items-start">
       <div className="grid gap-6 min-w-0">
         <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
           <h2 className="text-lg font-semibold">Pick content</h2>
@@ -523,7 +523,7 @@ export default function CreatePage() {
         </section>
       </div>
 
-      <aside className="lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto w-full lg:w-auto min-w-0">
+      <aside className="w-full min-w-0">
         <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/15 dark:bg-black">
           <div className="text-sm font-semibold">Live preview</div>
           <div className="mt-4 grid gap-4">
