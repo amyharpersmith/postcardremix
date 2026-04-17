@@ -13,7 +13,7 @@ type YTGlobal = {
     el: HTMLIFrameElement,
     opts: { events: { onStateChange: (e: YTEvent) => void } },
   ) => YTPlayer;
-  PlayerState: { PLAYING: number };
+  PlayerState: { PLAYING: number; ENDED: number };
 };
 declare global {
   interface Window {
@@ -109,10 +109,16 @@ export default function CardPage({
         window.setTimeout(attach, 100);
         return;
       }
+      const playlistLength = card?.playlistSongs?.length ?? 0;
       player = new YT.Player(iframe, {
         events: {
           onStateChange: (e) => {
             setIsPlaying(e.data === YT.PlayerState.PLAYING);
+            if (e.data === YT.PlayerState.ENDED && playlistLength > 0) {
+              setCurrentSongIndex((i) =>
+                i < playlistLength - 1 ? i + 1 : i,
+              );
+            }
           },
         },
       });
