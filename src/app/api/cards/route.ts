@@ -20,6 +20,7 @@ export async function POST(req: Request) {
 
   const toName = String(body.toName ?? "").trim();
   const message = String(body.message ?? "").trim();
+  const caption = String(body.caption ?? "").trim();
   const song = body.song ?? null;
   const media = body.media ?? null;
   const playlistSongs = body.playlistSongs ?? null;
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
 
   if (toName.length > 60) return NextResponse.json({ error: "Recipient name too long" }, { status: 400 });
   if (message.length > 280) return NextResponse.json({ error: "Message too long" }, { status: 400 });
+  if (caption.length > 80) return NextResponse.json({ error: "Caption too long" }, { status: 400 });
 
   try {
     const provider = song.provider === "youtube" ? song.provider : null;
@@ -59,6 +61,7 @@ export async function POST(req: Request) {
     const card = await createCard({
       toName,
       message,
+      caption: caption || undefined,
       song: {
         provider,
         title: String(song.title ?? ""),

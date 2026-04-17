@@ -32,25 +32,17 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: 16,
-        }}
-      >
+      <section className={styles.stepsGrid}>
         {[
           { n: "1", title: "Pick a Song", desc: "Search YouTube or paste a playlist URL." },
           { n: "2", title: "Add a GIF or Photo", desc: "Search GIPHY or upload your own image." },
           { n: "3", title: "Share a Short Link", desc: "We generate a URL that renders your card." },
         ].map((s) => (
-          <div key={s.n} className={styles.panel}>
-            <div className={styles.panelTitle}>
+          <div key={s.n} className={`${styles.panel} ${styles.stepPanel}`}>
+            <div className={`${styles.panelTitle} ${styles.stepTitle}`}>
               {s.n} · {s.title} <div className={styles.stripes} />
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.5 }}>
-              {s.desc}
-            </p>
+            <p className={styles.stepDesc}>{s.desc}</p>
           </div>
         ))}
       </section>

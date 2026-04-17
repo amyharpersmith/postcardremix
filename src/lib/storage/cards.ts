@@ -30,6 +30,7 @@ export type Card = {
   createdAt: string;
   toName: string;
   message: string;
+  caption?: string;
   song: CardSong;
   media: CardMedia;
   playlistSongs?: PlaylistSong[];

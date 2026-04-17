@@ -11,6 +11,7 @@ type Card = {
   createdAt: string;
   toName: string;
   message: string;
+  caption?: string;
   media: { type: "gif" | "image"; url: string; alt?: string };
   song: {
     provider: "youtube";
@@ -107,7 +108,7 @@ export default function CardPage({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={card.media.url} alt={card.media.alt ?? ""} />
               </div>
-              <div className={create.caption}>side a · for you</div>
+              <div className={create.caption}>{card.caption || `side a · for ${card.toName}`}</div>
             </div>
 
             <div className={create.miniCassette}>

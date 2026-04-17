@@ -1001,3 +1001,41 @@
   font-size: 11px;
   color: #ff8a8a;
 }
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.stepPanel {
+  padding: 16px 16px;
+}
+.stepTitle {
+  font-size: 10px;
+  gap: 8px;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+.stepDesc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .stepsGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .stepPanel {
+    padding: 12px 14px;
+  }
+  .stepTitle {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+  .stepDesc {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}

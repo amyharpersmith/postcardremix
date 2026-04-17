@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
+import { nanoid } from "nanoid";
 import styles from "./create.module.css";
 
 type MediaType = "gif" | "image";
@@ -40,6 +42,7 @@ type Media = {
 type CreateCardRequest = {
   toName: string;
   message: string;
+  caption: string;
   song: {
     provider: "youtube";
     title: string;
@@ -194,12 +197,20 @@ export default function CreatePage() {
     setError(null);
     setShareUrl(null);
     try {
-      const form = new FormData();
-      form.set("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Upload failed");
-      setMedia({ type: "image", url: json.url as string, alt: file.name });
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Only image uploads are supported");
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        throw new Error("File too large (max 15MB)");
+      }
+      const ext = file.name.includes(".") ? file.name.split(".").pop() : "png";
+      const path = `uploads/${nanoid(10)}.${ext}`;
+      const blob = await upload(path, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+        contentType: file.type,
+      });
+      setMedia({ type: "image", url: blob.url, alt: file.name });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     }
@@ -237,6 +248,7 @@ export default function CreatePage() {
       const body: CreateCardRequest = {
         toName: toName.trim(),
         message: message.trim(),
+        caption: caption.trim(),
         song: {
           provider: "youtube",
           title: content.title,
