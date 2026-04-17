@@ -61,18 +61,33 @@ export default async function OpengraphImage() {
 
           <div
             style={{
+              marginTop: 28,
+              fontSize: 68,
+              fontWeight: 700,
+              color: "#fff",
+              textShadow: "0 0 20px rgba(255, 79, 216, 0.9)",
+              letterSpacing: 2,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            A MIXTAPE FOR YOU
+          </div>
+
+          <div
+            style={{
               display: "flex",
               justifyContent: "space-around",
               alignItems: "center",
-              marginTop: 56,
+              marginTop: 24,
             }}
           >
             {[0, 1].map((i) => (
               <div
                 key={i}
                 style={{
-                  width: 160,
-                  height: 160,
+                  width: 140,
+                  height: 140,
                   borderRadius: "50%",
                   border: "6px solid #ff4fd8",
                   background:
@@ -103,20 +118,6 @@ export default async function OpengraphImage() {
             <span>♥ POSTCARD REMIX</span>
             <span>SIDE A</span>
           </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: 40,
-            fontSize: 72,
-            fontWeight: 700,
-            color: "#fff",
-            textShadow: "0 0 20px rgba(255, 79, 216, 0.9)",
-            letterSpacing: 2,
-            display: "flex",
-          }}
-        >
-          A Mixtape for you
         </div>
       </div>
     ),
