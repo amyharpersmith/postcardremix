@@ -3,7 +3,7 @@ import styles from "./create/create.module.css";
 
 export default function Home() {
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} ${styles.homeWrap}`}>
       <header className={styles.hero}>
         <div className={styles.logo}>
           <span className={styles.brandSmall}>Postcard Remix™</span>

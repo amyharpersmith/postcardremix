@@ -6,6 +6,16 @@
   padding: 32px 24px 64px;
 }
 
+.homeWrap {
+  max-width: 880px;
+  padding: 48px clamp(20px, 6vw, 72px) 80px;
+}
+@media (max-width: 720px) {
+  .homeWrap {
+    padding: 32px 20px 56px;
+  }
+}
+
 .hero {
   display: grid;
   grid-template-columns: 1fr auto;
