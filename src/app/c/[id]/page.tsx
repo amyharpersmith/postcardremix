@@ -1,9 +1,31 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import create from "../../create/create.module.css";
 import view from "./view.module.css";
+
+type YTPlayer = { destroy?: () => void };
+type YTEvent = { data: number };
+type YTGlobal = {
+  Player: new (
+    el: HTMLIFrameElement,
+    opts: { events: { onStateChange: (e: YTEvent) => void } },
+  ) => YTPlayer;
+  PlayerState: { PLAYING: number };
+};
+declare global {
+  interface Window {
+    YT?: YTGlobal;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+function withJsApi(url: string): string {
+  if (!url.startsWith("https://www.youtube.com/embed/")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}enablejsapi=1`;
+}
 
 type Card = {
   id: string;
@@ -38,8 +60,10 @@ export default function CardPage({
   const [card, setCard] = useState<Card | null>(null);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const [notFoundState, setNotFoundState] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     params.then(async ({ id }) => {
@@ -62,6 +86,57 @@ export default function CardPage({
     });
   }, [params]);
 
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) {
+      setIsPlaying(false);
+      return;
+    }
+
+    let cancelled = false;
+    let player: YTPlayer | null = null;
+
+    function attach() {
+      if (cancelled || !iframe) return;
+      const YT = window.YT;
+      if (!YT?.Player) {
+        window.setTimeout(attach, 100);
+        return;
+      }
+      player = new YT.Player(iframe, {
+        events: {
+          onStateChange: (e) => {
+            setIsPlaying(e.data === YT.PlayerState.PLAYING);
+          },
+        },
+      });
+    }
+
+    if (!window.YT) {
+      const existing = document.querySelector<HTMLScriptElement>(
+        'script[src="https://www.youtube.com/iframe_api"]',
+      );
+      if (!existing) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (prev) prev();
+        attach();
+      };
+    } else {
+      attach();
+    }
+
+    return () => {
+      cancelled = true;
+      if (player?.destroy) player.destroy();
+      setIsPlaying(false);
+    };
+  }, [card?.id, currentSongIndex]);
+
   if (notFoundState) notFound();
 
   if (loading) {
@@ -77,9 +152,11 @@ export default function CardPage({
   const isCustomPlaylist = (card.playlistSongs && card.playlistSongs.length > 0) ?? false;
   const playlistSongs = card.playlistSongs ?? [];
   const currentSong = isCustomPlaylist ? playlistSongs[currentSongIndex] : null;
-  const embedUrl = currentSong
-    ? `https://www.youtube.com/embed/${currentSong.videoId}?autoplay=0`
-    : card.song.embedUrl;
+  const embedUrl = withJsApi(
+    currentSong
+      ? `https://www.youtube.com/embed/${currentSong.videoId}?autoplay=0`
+      : card.song.embedUrl,
+  );
 
   const nowPlayingText = currentSong
     ? `${currentSong.title}${currentSong.subtitle ? ` — ${currentSong.subtitle}` : ""}`
@@ -114,8 +191,12 @@ export default function CardPage({
             <div className={create.miniCassette}>
               <div className={create.rainbow} />
               <div className={create.reels}>
-                <div className={create.reel} />
-                <div className={`${create.reel} ${create.reelSlow}`} />
+                <div
+                  className={`${create.reel} ${isPlaying ? "" : create.reelPaused}`}
+                />
+                <div
+                  className={`${create.reel} ${create.reelSlow} ${isPlaying ? "" : create.reelPaused}`}
+                />
               </div>
               <div className={create.labelStrip}>
                 <span className={create.song}>{nowPlayingText}</span>
@@ -142,6 +223,8 @@ export default function CardPage({
 
             <div className={view.playerFrame}>
               <iframe
+                key={embedUrl}
+                ref={iframeRef}
                 src={embedUrl}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen

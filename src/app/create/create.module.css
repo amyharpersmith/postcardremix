@@ -749,6 +749,9 @@
 .reelSlow {
   animation-duration: 5.5s;
 }
+.reelPaused {
+  animation-play-state: paused;
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
