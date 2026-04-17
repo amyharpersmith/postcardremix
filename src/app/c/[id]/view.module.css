@@ -147,6 +147,19 @@
   border-bottom-color: var(--cyan);
 }
 
+.ctaRow {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+.ctaRow a {
+  flex: 0 0 auto;
+  min-width: 260px;
+  text-align: center;
+  text-decoration: none;
+  letter-spacing: 1.5px;
+}
+
 .loading {
   padding: 80px 0;
   text-align: center;

@@ -735,6 +735,7 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
+  position: relative;
   background: radial-gradient(
     circle,
     #ffb3ea 0 22%,
@@ -744,10 +745,21 @@
   );
   border: 2px solid #ff4fd8;
   box-shadow: 0 0 8px rgba(255, 79, 216, 0.5), inset 0 0 8px rgba(0, 0, 0, 0.5);
-  animation: spin 4s linear infinite;
+  animation: spin 1.8s linear infinite;
+}
+.reel::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle 3px at 50% 10%, #0a0613 0 3px, transparent 3.5px),
+    radial-gradient(circle 3px at 85% 72%, #0a0613 0 3px, transparent 3.5px),
+    radial-gradient(circle 3px at 15% 72%, #0a0613 0 3px, transparent 3.5px);
+  pointer-events: none;
 }
 .reelSlow {
-  animation-duration: 5.5s;
+  animation-duration: 2.4s;
 }
 .reelPaused {
   animation-play-state: paused;

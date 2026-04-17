@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import create from "../../create/create.module.css";
@@ -292,6 +293,12 @@ export default function CardPage({
           </div>
         </div>
       </section>
+
+      <div className={view.ctaRow}>
+        <Link href="/create" className={`${create.btn} ${create.btnPrimary}`}>
+          CREATE YOUR OWN CARD
+        </Link>
+      </div>
     </div>
   );
 }
