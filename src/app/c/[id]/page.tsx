@@ -222,15 +222,27 @@ export default function CardPage({
               Now Playing <div className={create.stripes} />
             </div>
 
-            <div className={view.playerFrame}>
-              <iframe
-                key={embedUrl}
-                ref={iframeRef}
-                src={embedUrl}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                title={currentSong?.title ?? card.song.title ?? "Song"}
-              />
+            <div className={view.tvFrame}>
+              <div className={view.playerFrame}>
+                <iframe
+                  key={embedUrl}
+                  ref={iframeRef}
+                  src={embedUrl}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  title={currentSong?.title ?? card.song.title ?? "Song"}
+                />
+              </div>
+              <div className={view.tvControls}>
+                <span className={view.tvBrand}>
+                  <span className={view.tvLed} />
+                  POSTCARD-REMIX
+                </span>
+                <div className={view.tvKnobs}>
+                  <span className={view.tvKnob} />
+                  <span className={view.tvKnob} />
+                </div>
+              </div>
             </div>
 
             {isCustomPlaylist && (
