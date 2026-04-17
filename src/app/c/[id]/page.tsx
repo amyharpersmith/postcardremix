@@ -188,7 +188,6 @@ export default function CardPage({
     <div className={create.wrap}>
       <header className={create.hero}>
         <div className={create.logo}>
-          <span className={create.brandSmall}>Postcard</span>
           <span className={create.version}>v0.52</span>
           <h1>SIDE {currentSide}</h1>
         </div>
