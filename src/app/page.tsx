@@ -6,14 +6,14 @@ export default function Home() {
     <div className={`${styles.wrap} ${styles.homeWrap}`}>
       <header className={styles.hero}>
         <div className={styles.logo}>
-          <span className={styles.brandSmall}>Postcard Remix™</span>
+          <span className={styles.brandSmall}>Postcard</span>
           <span className={styles.version}>v0.52</span>
           <h1>REMIX</h1>
         </div>
       </header>
 
       <p className={styles.path}>
-        ~/src/postcard-remix <span className={styles.sep}>›</span>{" "}
+        discofries <span className={styles.sep}>›</span>{" "}
         <span className={styles.hl}>home</span>
       </p>
 

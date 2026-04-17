@@ -51,10 +51,25 @@ function keyFor(id: string) {
   return `${KEY_PREFIX}${id}`;
 }
 
-export async function createCard(input: Omit<Card, "id" | "version" | "createdAt">): Promise<Card> {
+export class SlugTakenError extends Error {
+  constructor(slug: string) {
+    super(`Slug "${slug}" is already taken`);
+    this.name = "SlugTakenError";
+  }
+}
+
+export async function createCard(
+  input: Omit<Card, "id" | "version" | "createdAt">,
+  options?: { customSlug?: string },
+): Promise<Card> {
+  const id = options?.customSlug ?? newCardId();
+  if (options?.customSlug) {
+    const existing = await kv.get(keyFor(id));
+    if (existing) throw new SlugTakenError(id);
+  }
   const card: Card = {
     ...input,
-    id: newCardId(),
+    id,
     version: 1,
     createdAt: new Date().toISOString(),
   };

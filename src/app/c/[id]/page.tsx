@@ -24,8 +24,11 @@ declare global {
 
 function withJsApi(url: string): string {
   if (!url.startsWith("https://www.youtube.com/embed/")) return url;
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}enablejsapi=1`;
+  const [base, query = ""] = url.split("?");
+  const params = new URLSearchParams(query);
+  params.set("enablejsapi", "1");
+  params.set("autoplay", "1");
+  return `${base}?${params.toString()}`;
 }
 
 type Card = {
@@ -62,6 +65,7 @@ export default function CardPage({
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [flipping, setFlipping] = useState(false);
 
   const [notFoundState, setNotFoundState] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -138,6 +142,20 @@ export default function CardPage({
     };
   }, [card?.id, currentSongIndex]);
 
+  const prevSideRef = useRef<"A" | "B">("A");
+  useEffect(() => {
+    const hasTwoSides =
+      (card?.playlistSongs?.length ?? 0) > 3;
+    const side: "A" | "B" =
+      hasTwoSides && currentSongIndex >= 3 ? "B" : "A";
+    if (side !== prevSideRef.current) {
+      prevSideRef.current = side;
+      setFlipping(true);
+      const t = window.setTimeout(() => setFlipping(false), 800);
+      return () => window.clearTimeout(t);
+    }
+  }, [card?.playlistSongs?.length, currentSongIndex]);
+
   if (notFoundState) notFound();
 
   if (loading) {
@@ -153,9 +171,11 @@ export default function CardPage({
   const isCustomPlaylist = (card.playlistSongs && card.playlistSongs.length > 0) ?? false;
   const playlistSongs = card.playlistSongs ?? [];
   const currentSong = isCustomPlaylist ? playlistSongs[currentSongIndex] : null;
+  const hasTwoSides = isCustomPlaylist && playlistSongs.length > 3;
+  const currentSide: "A" | "B" = hasTwoSides && currentSongIndex >= 3 ? "B" : "A";
   const embedUrl = withJsApi(
     currentSong
-      ? `https://www.youtube.com/embed/${currentSong.videoId}?autoplay=0`
+      ? `https://www.youtube.com/embed/${currentSong.videoId}`
       : card.song.embedUrl,
   );
 
@@ -167,9 +187,9 @@ export default function CardPage({
     <div className={create.wrap}>
       <header className={create.hero}>
         <div className={create.logo}>
-          <span className={create.brandSmall}>Postcard Remix™</span>
+          <span className={create.brandSmall}>Postcard</span>
           <span className={create.version}>v0.52</span>
-          <h1>SIDE A</h1>
+          <h1>SIDE {currentSide}</h1>
         </div>
       </header>
 
@@ -189,7 +209,7 @@ export default function CardPage({
               <div className={create.caption}>{card.caption || `side a · for ${card.toName}`}</div>
             </div>
 
-            <div className={create.miniCassette}>
+            <div className={`${create.miniCassette} ${flipping ? create.miniCassetteFlip : ""}`}>
               <div className={create.rainbow} />
               <div className={create.reels}>
                 <div
@@ -201,7 +221,7 @@ export default function CardPage({
               </div>
               <div className={create.labelStrip}>
                 <span className={create.song}>{nowPlayingText}</span>
-                <span>SIDE A</span>
+                <span>SIDE {currentSide}</span>
               </div>
             </div>
 

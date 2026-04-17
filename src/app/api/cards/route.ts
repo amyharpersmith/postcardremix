@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
-import { createCard } from "@/lib/storage/cards";
+import { createCard, SlugTakenError } from "@/lib/storage/cards";
 import { rateLimitOrThrow } from "@/lib/rateLimit";
+
+const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
+const RESERVED_SLUGS = new Set(["api", "create", "c", "admin", "new", "about"]);
+
+function validateCustomSlug(raw: unknown): string | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw !== "string") throw new Error("Invalid custom slug");
+  const slug = raw.trim().toLowerCase();
+  if (!slug) return null;
+  if (!SLUG_PATTERN.test(slug)) {
+    throw new Error("Slug must be 3-30 chars, lowercase letters, numbers, or hyphens");
+  }
+  if (RESERVED_SLUGS.has(slug)) throw new Error("That slug is reserved");
+  return slug;
+}
 
 function getBaseUrl(req: Request): string {
   const proto = req.headers.get("x-forwarded-proto") ?? "http";
@@ -58,29 +73,45 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Media URL must be https" }, { status: 400 });
     }
 
-    const card = await createCard({
-      toName,
-      message,
-      caption: caption || undefined,
-      song: {
-        provider,
-        title: String(song.title ?? ""),
-        subtitle: String(song.subtitle ?? ""),
-        url: songUrl,
-        embedUrl,
-        thumbnailUrl: song.thumbnailUrl ? String(song.thumbnailUrl) : undefined,
+    let customSlug: string | null;
+    try {
+      customSlug = validateCustomSlug(body.customSlug);
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Invalid slug" },
+        { status: 400 },
+      );
+    }
+
+    const card = await createCard(
+      {
+        toName,
+        message,
+        caption: caption || undefined,
+        song: {
+          provider,
+          title: String(song.title ?? ""),
+          subtitle: String(song.subtitle ?? ""),
+          url: songUrl,
+          embedUrl,
+          thumbnailUrl: song.thumbnailUrl ? String(song.thumbnailUrl) : undefined,
+        },
+        media: {
+          type: mediaType,
+          url: mediaUrl,
+          alt: media.alt ? String(media.alt) : undefined,
+        },
+        playlistSongs: playlistSongs && Array.isArray(playlistSongs) ? playlistSongs : undefined,
       },
-      media: {
-        type: mediaType,
-        url: mediaUrl,
-        alt: media.alt ? String(media.alt) : undefined,
-      },
-      playlistSongs: playlistSongs && Array.isArray(playlistSongs) ? playlistSongs : undefined,
-    });
+      customSlug ? { customSlug } : undefined,
+    );
 
     const shareUrl = new URL(`/c/${encodeURIComponent(card.id)}`, getBaseUrl(req)).toString();
     return NextResponse.json({ id: card.id, shareUrl });
   } catch (e) {
+    if (e instanceof SlugTakenError) {
+      return NextResponse.json({ error: "That link is already taken — try another" }, { status: 409 });
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Create failed" },
       { status: 500 },

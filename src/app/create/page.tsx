@@ -53,6 +53,7 @@ type CreateCardRequest = {
   };
   media: Media;
   playlistSongs?: PlaylistSong[];
+  customSlug?: string;
 };
 
 function extractPlaylistId(url: string): string | null {
@@ -91,6 +92,7 @@ export default function CreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [customSlug, setCustomSlug] = useState("");
 
   const captionRef = useRef<HTMLDivElement | null>(null);
   const recipientRef = useRef<HTMLSpanElement | null>(null);
@@ -260,10 +262,11 @@ export default function CreatePage() {
         media,
         playlistSongs: playlistSongs.length > 0 ? playlistSongs : undefined,
       };
+      const trimmedSlug = customSlug.trim().toLowerCase();
       const res = await fetch("/api/cards", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(trimmedSlug ? { ...body, customSlug: trimmedSlug } : body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? "Create failed");
@@ -304,7 +307,7 @@ export default function CreatePage() {
     <div className={styles.wrap} onKeyDown={handleKeyNav}>
       <header className={styles.hero}>
         <div className={styles.logo}>
-          <span className={styles.brandSmall}>Postcard Remix™</span>
+          <span className={styles.brandSmall}>Postcard</span>
           <span className={styles.version}>v0.52</span>
           <h1>REMIX</h1>
         </div>
@@ -319,7 +322,7 @@ export default function CreatePage() {
       </header>
 
       <p className={styles.path}>
-        ~/src/postcard-remix <span className={styles.sep}>›</span>{" "}
+        discofries <span className={styles.sep}>›</span>{" "}
         <span className={styles.hl}>new postcard</span>{" "}
         <span className={styles.sep}>›</span> Side A
       </p>
@@ -708,6 +711,31 @@ export default function CreatePage() {
               </span>
               <span className={styles.stamp}>♥ REMIX &apos;86</span>
             </div>
+          </div>
+
+          <div className={styles.customSlugRow}>
+            <label className={styles.customSlugLabel} htmlFor="customSlug">
+              CUSTOM LINK (optional)
+            </label>
+            <div className={styles.customSlugField}>
+              <span className={styles.customSlugPrefix}>/c/</span>
+              <input
+                id="customSlug"
+                type="text"
+                value={customSlug}
+                onChange={(e) =>
+                  setCustomSlug(e.target.value.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 30))
+                }
+                placeholder="e.g. for-alex"
+                maxLength={30}
+                className={styles.customSlugInput}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+            <span className={styles.customSlugHint}>
+              3–30 chars · lowercase letters, numbers, hyphens · leave blank for auto
+            </span>
           </div>
 
           <div className={styles.shareRow}>
