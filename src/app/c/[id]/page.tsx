@@ -28,7 +28,6 @@ function withJsApi(url: string): string {
   const params = new URLSearchParams(query);
   params.set("enablejsapi", "1");
   params.set("autoplay", "1");
-  params.set("mute", "1");
   params.set("playsinline", "1");
   return `${base}?${params.toString()}`;
 }
